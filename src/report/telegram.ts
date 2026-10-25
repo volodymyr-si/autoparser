@@ -172,7 +172,8 @@ async function postMessage(token: string, chatId: string, text: string): Promise
     res = await send();
   }
   if (!res.ok) {
-    throw new Error(`Telegram sendMessage failed: HTTP ${res.status}: ${await res.text()}`);
+    const hint = res.status === 404 ? ' (TELEGRAM_BOT_TOKEN is wrong: Telegram does not know this bot)' : '';
+    throw new Error(`Telegram sendMessage failed: HTTP ${res.status}${hint}: ${await res.text()}`);
   }
 }
 
@@ -181,8 +182,9 @@ export async function sendTelegram(
   messages: string[],
   env: Record<string, string | undefined> = process.env,
 ): Promise<void> {
-  const token = env.TELEGRAM_BOT_TOKEN;
-  const chatId = env.TELEGRAM_CHAT_ID;
+  // Secrets pasted by hand often carry stray whitespace or a "bot" prefix.
+  const token = env.TELEGRAM_BOT_TOKEN?.trim().replace(/^bot/, '');
+  const chatId = env.TELEGRAM_CHAT_ID?.trim();
   if (!token || !chatId) {
     console.log('TELEGRAM_BOT_TOKEN або TELEGRAM_CHAT_ID не задано: dry run, повідомлення у stdout.');
     for (const message of messages) console.log(`\n----- повідомлення -----\n${message}`);
