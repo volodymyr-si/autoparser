@@ -15,6 +15,10 @@ export interface AutoRiaOptions {
 
 /**
  * Edit the query string segment by segment so the user's raw `[0]` brackets are never re-encoded.
+ *
+ * The site has two URL formats. Old (`brand.id[0]=79`) reads `size` and `indexName=auto` for
+ * used cars only; new (`search_type=1&all[0].any[0].brand=79`) reads `limit` and needs
+ * `search_type=2` for used cars only. Setting both page-size params works for either.
  */
 export function normalizeSearchUrl(userUrl: string, page: number): string {
   const hashAt = userUrl.indexOf('#');
@@ -32,10 +36,12 @@ export function normalizeSearchUrl(userUrl: string, page: number): string {
   };
   const has = (k: string): boolean => segs.some((s) => keyOf(s) === k);
   const hasSort = segs.some((s) => keyOf(s).startsWith('sort[') || keyOf(s) === 'order_by');
-  const kept = segs.filter((s) => keyOf(s) !== 'page' && keyOf(s) !== 'size');
-  if (!has('indexName')) kept.push('indexName=auto');
+  const newFormat = has('search_type');
+  const kept = segs.filter((s) => !['page', 'size', 'limit', 'search_type'].includes(keyOf(s)));
+  if (newFormat) kept.push('search_type=2');
+  else if (!has('indexName')) kept.push('indexName=auto');
   if (!hasSort) kept.push('sort[0].order=dates.created.desc');
-  kept.push(`size=${PAGE_SIZE}`, `page=${page}`);
+  kept.push(`size=${PAGE_SIZE}`, `limit=${PAGE_SIZE}`, `page=${page}`);
   return `${base}?${kept.join('&')}`;
 }
 
