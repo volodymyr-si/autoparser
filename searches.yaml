@@ -1,0 +1,7 @@
+# Saved searches to track. Set filters on auto.ria.com and paste the URL from the address bar.
+# `name` is the key in the database: renaming a search starts it from scratch (baseline).
+# Paging, page size, sorting and "used cars only" are added by the parser.
+searches:
+  - name: Camry 2019 до $20k
+    url: "https://auto.ria.com/uk/search/?categories.main.id=1&brand.id[0]=79&model.id[0]=698&year[0].gte=2019&year[0].lte=2019&price.USD.lte=20000&price.currency=1"
+    # enabled: false   # optional, defaults to true
