@@ -153,7 +153,9 @@ function syncSearches(db: DatabaseSync, searches: SearchConfig[], now: string) {
   return inTransaction(db, () => {
     const upsert = db.prepare(
       `INSERT INTO searches (name, url, enabled) VALUES (?, ?, ?)
-       ON CONFLICT(name) DO UPDATE SET url = excluded.url, enabled = excluded.enabled
+       ON CONFLICT(name) DO UPDATE SET url = excluded.url, enabled = excluded.enabled,
+         -- changed filters: ads that only now match are not fresh, so take a new baseline
+         baseline_at = CASE WHEN url = excluded.url THEN baseline_at END
        RETURNING id, baseline_at`,
     );
     const states: SearchState[] = [];
