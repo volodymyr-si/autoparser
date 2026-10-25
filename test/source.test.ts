@@ -131,12 +131,17 @@ describe('normalizeSearchUrl', () => {
       2,
     );
     expect(u).toBe(
-      'https://auto.ria.com/uk/search/?categories.main.id=1&brand.id[0]=79&indexName=auto&sort[0].order=dates.created.desc&size=100&page=2',
+      'https://auto.ria.com/uk/search/?categories.main.id=1&brand.id[0]=79&indexName=auto&sort[0].order=dates.created.desc&size=100&limit=100&page=2',
     );
   });
   it('respects existing indexName and sort', () => {
     const u = normalizeSearchUrl('https://auto.ria.com/uk/search/?indexName=auto,order_auto&sort[0].order=price.asc', 0);
-    expect(u).toBe('https://auto.ria.com/uk/search/?indexName=auto,order_auto&sort[0].order=price.asc&size=100&page=0');
+    expect(u).toBe('https://auto.ria.com/uk/search/?indexName=auto,order_auto&sort[0].order=price.asc&size=100&limit=100&page=0');
+  });
+
+  it('new-format URL: forces used cars via search_type=2 and replaces limit', () => {
+    const u = normalizeSearchUrl('https://auto.ria.com/uk/search/?search_type=1&category=1&all[0].any[0].brand=84&page=0&limit=20', 1);
+    expect(u).toBe('https://auto.ria.com/uk/search/?category=1&all[0].any[0].brand=84&search_type=2&sort[0].order=dates.created.desc&size=100&limit=100&page=1');
   });
 });
 
