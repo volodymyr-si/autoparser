@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Ctext y=%2714%27 font-size=%2714%27%3E🚗%3C/text%3E%3C/svg%3E">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoRia Tracker</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <h1>AutoRia Tracker</h1>
+  <div class="meta"><span id="updated">Оновлено: …</span><span id="runstatus" class="badge">…</span></div>
+</header>
+<nav class="tabs" role="tablist">
+  <button class="tab active" data-tab="active" role="tab">Активні</button>
+  <button class="tab" data-tab="sold" role="tab">Днів до продажу</button>
+</nav>
+<main>
+  <div id="error" class="empty" hidden></div>
+  <section id="tab-active">
+    <div class="filters">
+      <label>Пошук<select id="f-search"></select></label>
+      <label>Марка<select id="f-brand"></select></label>
+      <label>Модель<select id="f-model"></select></label>
+      <label>Рік від<input id="f-yfrom" type="number" inputmode="numeric" placeholder="—"></label>
+      <label>Рік до<input id="f-yto" type="number" inputmode="numeric" placeholder="—"></label>
+      <label>Ціна від, $<input id="f-pfrom" type="number" inputmode="numeric" placeholder="—"></label>
+      <label>Ціна до, $<input id="f-pto" type="number" inputmode="numeric" placeholder="—"></label>
+      <label class="wide">Текст<input id="f-text" type="search" placeholder="назва, місто…"></label>
+    </div>
+    <p class="count" id="count"></p>
+    <div class="scroll">
+      <table id="tbl">
+        <thead><tr>
+          <th data-k="title">Авто</th><th data-k="year" class="n">Рік</th><th data-k="mileageKm" class="n">Пробіг, тис. км</th>
+          <th data-k="city">Місто</th><th data-k="priceUsd" class="n">Ціна $</th>
+          <th data-k="delta" class="n">Зміна ціни</th><th data-k="daysOnMarket" class="n">Днів на ринку</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+  <section id="tab-sold" hidden>
+    <div class="filters"><label>Пошук<select id="s-search"></select></label></div>
+    <div id="sold-empty" class="empty" hidden>Поки немає проданих авто. Статистика з’явиться, коли трекер зафіксує перші продажі.</div>
+    <div id="sold-body">
+      <h2>За моделями</h2>
+      <div class="scroll"><table id="t-models"><thead><tr><th>Модель</th><th class="n">Продано</th><th class="n">Медіана днів</th><th class="n">Середнє днів</th><th class="n">Медіана ціни $</th></tr></thead><tbody></tbody></table></div>
+      <h2>За ціновими діапазонами</h2>
+      <div class="scroll"><table id="t-buckets"><thead><tr><th>Діапазон</th><th class="n">Продано</th><th class="n">Медіана днів</th></tr></thead><tbody></tbody></table></div>
+      <h2>Медіана днів до продажу (топ-15 моделей)</h2>
+      <div id="chart" class="chart"></div>
+    </div>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+name: daily
+
+on:
+  schedule:
+    - cron: '0 9 * * *' # 09:00 UTC = 12:00 Kyiv (summer) / 11:00 (winter)
+  workflow_dispatch:
+    inputs:
+      probe:
+        description: Only check that auto.ria.com answers from Actions (no DB writes)
+        type: boolean
+        default: false
+
+concurrency:
+  group: daily
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - name: Probe
+        if: inputs.probe
+        run: npm run probe
+
+      - name: Track
+        if: ${{ !inputs.probe }}
+        run: npm run track
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: Commit database
+        if: ${{ always() && !inputs.probe }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/autoria.db
+          if git diff --cached --quiet; then echo 'no changes'; exit 0; fi
+          git commit -m "data: $(date -u +%F)"
+          git push
+
+      - name: Build dashboard
+        if: ${{ always() && !inputs.probe }}
+        run: npm run dashboard -- data/autoria.db site
+
+      - uses: actions/upload-pages-artifact@v3
+        if: ${{ always() && !inputs.probe }}
+        with:
+          path: site
+
+  deploy:
+    needs: track
+    if: ${{ always() && !inputs.probe && needs.track.result != 'cancelled' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

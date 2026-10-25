@@ -1,0 +1,18 @@
+HTTP/2 301 
+server: openresty
+date: Sun, 25 Oct 2026 20:26:29 GMT
+content-type: text/plain; charset=utf-8
+content-length: 71
+x-powered-by: Express
+link: </vue3-prod/static/fonts/roboto-regular.woff2>; rel=preload; as=font; type="font/woff2"; crossorigin, </vue3-prod/static/fonts/roboto-medium.woff2>; rel=preload; as=font; type="font/woff2"; crossorigin, </vue3-prod/static/fonts/roboto-bold.woff2>; rel=preload; as=font; type="font/woff2"; crossorigin
+set-cookie: viewalertnoadv=30000000; path=/; expires=Sun, 25 Oct 2026 20:26:30 GMT; domain=auto.ria.com; httponly
+location: https://auto.ria.com/uk/car/jawa/350/
+vary: Accept
+x-envoy-upstream-service-time: 99
+set-cookie: ab_redesign=1;Path=/;Max-Age=2592000;Secure;SameSite=None
+set-cookie: ab_test_new_pages=1;Path=/;Max-Age=2592000;Secure;SameSite=None
+x-custom-need-to-redirect-uk: 0
+x-custom-need-to-redirect-ru: 0
+x-custom-is-ukraine: 1
+x-custom-redirect-type: 7
+
