@@ -3,5 +3,5 @@
 # Paging, page size, sorting and "used cars only" are added by the parser.
 searches:
   - name: Passat універсал
-    url: "https://auto.ria.com/uk/search/?search_type=1&category=1&bodystyle[0]=2&all[0].any[0].brand=84&all[0].any[0].any[0].model=39690&all[0].any[0].any[1].model=2805&all[0].any[0].year[0]=2022&all[1].any[0].fuel[0]=2&price[0]=1&price[2]=20000&gearbox[0]=2&gearbox[1]=3&gearbox[2]=4&gearbox[3]=5&abroad=0&customs_cleared=1&page=0&limit=20"
+    url: "https://auto.ria.com/uk/search/?search_type=1&category=1&bodystyle[0]=2&all[0].any[0].brand=84&all[0].any[0].any[0].model=39690&all[0].any[0].any[1].model=2805&all[0].any[0].year[0]=2022&all[1].any[0].fuel[0]=2&gearbox[0]=2&gearbox[1]=3&gearbox[2]=4&gearbox[3]=5&abroad=0&customs_cleared=1&page=0&limit=20"
     # enabled: false   # optional, defaults to true

@@ -367,6 +367,17 @@ describe('search configuration changes', () => {
     await run([{ ...A, url: 'https://auto.ria.com/a2' }]);
     expect(all<{ url: string }>('SELECT url FROM searches')).toEqual([{ url: 'https://auto.ria.com/a2' }]);
   });
+
+  it('changing the url re-baselines: newly matching ads are not reported as new', async () => {
+    await run([A]);
+    const A2 = { ...A, url: 'https://auto.ria.com/a2' };
+    src.setSearch(A2.url, [ad(1), ad(2), ad(5)]);
+    const r = await run([A2]);
+    expect(eventTypes(r)).toEqual([]);
+    expect(r.searches[0]!.baseline).toBe(true);
+    src.setSearch(A2.url, [ad(1), ad(2), ad(5), ad(6)]);
+    expect(eventTypes(await run([A2]))).toEqual(['new']);
+  });
 });
 
 describe('prices in the seller currency', () => {
