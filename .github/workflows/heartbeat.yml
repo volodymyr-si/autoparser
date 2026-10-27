@@ -1,0 +1,12 @@
+name: heartbeat
+
+# Temporary: checks whether GitHub fires scheduled workflows in this repo at all.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+
+jobs:
+  beat:
+    runs-on: ubuntu-latest
+    steps:
+      - run: date -u
