@@ -6,6 +6,7 @@ import type {
   ListingStatus,
   ListingSummary,
   ListingView,
+  SoldView,
   PriceDrop,
   RunReport,
   SearchConfig,
@@ -500,6 +501,7 @@ function buildSearchReport(ctx: Ctx, state: SearchState): SearchReport {
     reposts: views('repost'),
     priceDrops,
     soldCount: ofType('sold').length,
+    sold: ofType('sold').map((e) => soldView(ctx, e.listing_id)),
     outOfFilterCount: ofType('out_of_filter').length,
     backCount: ofType('back').length,
   };
@@ -525,4 +527,14 @@ function listingView(ctx: Ctx, id: number): ListingView {
     priceUsd: r.price_usd,
     daysOnMarket: Math.max(0, days),
   };
+}
+
+function soldView(ctx: Ctx, id: number): SoldView {
+  const r = ctx.db.prepare('SELECT price, currency FROM listings WHERE id = ?').get(id) as Record<string, any>;
+  const first = r.currency
+    ? (ctx.db
+        .prepare('SELECT price FROM price_history WHERE listing_id = ? AND currency = ? ORDER BY observed_at LIMIT 1')
+        .get(id, r.currency) as { price: number } | undefined)
+    : undefined;
+  return { ...listingView(ctx, id), price: r.price ?? null, currency: r.currency ?? null, firstPrice: first?.price ?? null };
 }

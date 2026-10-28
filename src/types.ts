@@ -94,6 +94,14 @@ export interface ListingView {
   daysOnMarket: number;
 }
 
+/** A listing that left the market (sold or deleted): last asking price, not the deal price. */
+export interface SoldView extends ListingView {
+  price: number | null;
+  currency: Currency | null;
+  /** First observed price in the same currency, to show the total discount. */
+  firstPrice: number | null;
+}
+
 export interface PriceDrop {
   listing: ListingView;
   /** In the seller's currency; a drop is detected only in this currency. */
@@ -117,6 +125,7 @@ export interface SearchReport {
   reposts: ListingView[];
   priceDrops: PriceDrop[];
   soldCount: number;
+  sold: SoldView[];
   outOfFilterCount: number;
   backCount: number;
 }

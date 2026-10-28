@@ -162,6 +162,18 @@ describe('disappearing listings', () => {
     expect((all('SELECT closed_at FROM listings WHERE id = 2')[0] as any).closed_at).toBe(day(1));
   });
 
+  it('sold report carries the last and the first price', async () => {
+    await run();
+    src.setSearch(A.url, [ad(1), ad(2, 9000)]);
+    await run();
+    src.setSearch(A.url, [ad(1)]);
+    src.pages.set(2, { status: 'removed' });
+    const r = await run();
+    expect(r.searches[0]!.sold).toEqual([
+      expect.objectContaining({ id: 2, price: 9000, currency: 'USD', firstPrice: 10000, priceUsd: 9000, daysOnMarket: 2 }),
+    ]);
+  });
+
   it('out_of_filter then back with the same history', async () => {
     await run();
     src.setSearch(A.url, [ad(1)]);

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { formatDigest, formatFailure, sendTelegram } from '../src/report/telegram.js';
-import type { ListingView, PriceDrop, RunReport, SearchReport } from '../src/types.js';
+import type { ListingView, PriceDrop, RunReport, SearchReport, SoldView } from '../src/types.js';
 
 function listing(over: Partial<ListingView> = {}): ListingView {
   return {
@@ -29,6 +29,7 @@ function search(over: Partial<SearchReport> = {}): SearchReport {
     reposts: [],
     priceDrops: [],
     soldCount: 0,
+    sold: [],
     outOfFilterCount: 0,
     backCount: 0,
     ...over,
@@ -55,7 +56,38 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+function sold(over: Partial<SoldView> = {}): SoldView {
+  return { ...listing(), price: 15500, currency: 'USD', firstPrice: 15500, daysOnMarket: 40, ...over };
+}
+
 describe('formatDigest', () => {
+  it('lists sold cars with last price, discount from the first price and days on market', () => {
+    const text = joined(
+      formatDigest(
+        report({
+          searches: [
+            search({
+              soldCount: 3,
+              sold: [
+                sold({ price: 14000, firstPrice: 15500, priceUsd: 14000 }),
+                sold({ price: 600000, currency: 'UAH', firstPrice: 600000, priceUsd: 14500, daysOnMarket: 7 }),
+                sold({ price: null, currency: null, firstPrice: null, priceUsd: 9000 }),
+              ],
+            }),
+          ],
+        }),
+      ),
+    );
+    expect(text).toContain('<b>Продані / зняті:</b>');
+    expect(text).toContain('Toyota Camry 2018</a>, $14 000 (було $15 500, −9,7%), 40 дн. на ринку');
+    expect(text).toContain('Toyota Camry 2018</a>, 600 000 ₴ ≈ $14 500, 7 дн. на ринку');
+    expect(text).toContain('Toyota Camry 2018</a>, $9 000, 40 дн. на ринку');
+  });
+
+  it('has no sold section when nothing sold', () => {
+    expect(joined(formatDigest(report({ searches: [search()] })))).not.toContain('Продані');
+  });
+
   it('puts the Kyiv date in the header', () => {
     // 23:30 UTC on 24.10 is 01:30 on 25.10 in Kyiv.
     const [first] = formatDigest(report({ finishedAt: '2026-10-24T23:30:00Z' }));

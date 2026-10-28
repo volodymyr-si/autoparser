@@ -1,4 +1,4 @@
-import type { Currency, ListingView, PriceDrop, RunReport, SearchReport } from '../types.js';
+import type { Currency, ListingView, PriceDrop, RunReport, SearchReport, SoldView } from '../types.js';
 
 /** Telegram limit for one message (counted in UTF-16 code units, same as String#length). */
 const MAX_MESSAGE_LEN = 4096;
@@ -76,6 +76,24 @@ function priceDropLine(drop: PriceDrop): string {
   );
 }
 
+function soldLine(sold: SoldView): string {
+  const title = truncate(sold.title || `#${sold.id}`, MAX_TITLE_LEN);
+  const fields: string[] = [`<a href="${escapeHtml(sold.url)}">${escapeHtml(title)}</a>`];
+  if (sold.price != null && sold.currency) {
+    let price = formatPrice(sold.price, sold.currency);
+    if (sold.currency !== 'USD' && sold.priceUsd != null) price += ` ≈ ${formatUsd(sold.priceUsd)}`;
+    if (sold.firstPrice != null && sold.firstPrice > sold.price) {
+      const diff = sold.firstPrice - sold.price;
+      price += ` (було ${formatPrice(sold.firstPrice, sold.currency)}, −${formatDecimal((diff / sold.firstPrice) * 100)}%)`;
+    }
+    fields.push(price);
+  } else if (sold.priceUsd != null) {
+    fields.push(formatUsd(sold.priceUsd));
+  }
+  fields.push(`${sold.daysOnMarket} дн. на ринку`);
+  return `• ${fields.join(', ')}`;
+}
+
 /** Blocks are atomic (one item or one line each), so a message never splits an item or a tag. */
 function searchBlocks(search: SearchReport): string[] {
   const name = `<b><a href="${escapeHtml(search.url)}">${escapeHtml(search.search)}</a></b>`;
@@ -98,6 +116,9 @@ function searchBlocks(search: SearchReport): string[] {
   }
   if (search.priceDrops.length > 0) {
     blocks.push('<b>Подешевшали:</b>', ...search.priceDrops.map(priceDropLine));
+  }
+  if (search.sold.length > 0) {
+    blocks.push('<b>Продані / зняті:</b>', ...search.sold.map(soldLine));
   }
   return blocks;
 }
