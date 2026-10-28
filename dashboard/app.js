@@ -3,7 +3,7 @@
 var $ = function (id) { return document.getElementById(id); };
 var TZ = 'Europe/Kyiv';
 var data = null;
-var sort = { k: 'daysOnMarket', dir: -1 };
+var sorts = { active: { k: 'daysOnMarket', dir: -1 }, sold: { k: 'closedAt', dir: -1 } };
 var expanded = {};
 
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -71,8 +71,8 @@ function filtered() {
   });
 }
 function sortVal(l, k) { return k === 'delta' ? deltaPct(l) : l[k]; }
-function sorted(list) {
-  var k = sort.k, dir = sort.dir;
+function sorted(list, st) {
+  var k = st.k, dir = st.dir;
   return list.slice().sort(function (a, b) {
     var x = sortVal(a, k), y = sortVal(b, k);
     if (x == null && y == null) return 0;
@@ -111,24 +111,34 @@ function historyHtml(l) {
   return '<div class="hist-in"><ul>' + items + '</ul>' + historySvg(h) + '</div>';
 }
 
-function renderActive() {
-  var list = sorted(filtered());
-  $('count').textContent = 'Показано ' + list.length + ' з ' + data.active.length;
-  var html = '';
+function priceCell(l) {
+  if (l.priceUsd == null) return '—';
+  var s = '$' + fmtNum(l.priceUsd);
+  return l.currency && l.currency !== 'USD' && l.price != null ? s + '<br><span class="flat">' + money(l.price, l.currency) + '</span>' : s;
+}
+// Rows for the active and sold tables; sold ones get an extra "left the market" date column.
+function renderRows(tbody, table, list, st, withClosed) {
+  var cols = withClosed ? 8 : 7, html = '';
   list.forEach(function (l) {
-    var open = !!expanded[l.id];
     html += '<tr class="row" data-id="' + l.id + '"><td class="title"><a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.title) + '</a></td>' +
       '<td class="n">' + (l.year || '—') + '</td><td class="n">' + (l.mileageKm == null ? '—' : fmtNum(l.mileageKm / 1000)) + '</td>' +
-      '<td>' + esc(l.city || '—') + '</td><td class="n">' + (l.priceUsd == null ? '—' : '$' + fmtNum(l.priceUsd)) + '</td>' +
-      '<td class="n">' + deltaHtml(l) + '</td><td class="n">' + l.daysOnMarket + '</td></tr>';
-    if (open) html += '<tr class="hist"><td colspan="7">' + historyHtml(l) + '</td></tr>';
+      '<td>' + esc(l.city || '—') + '</td><td class="n">' + priceCell(l) + '</td>' +
+      '<td class="n">' + deltaHtml(l) + '</td><td class="n">' + l.daysOnMarket + '</td>' +
+      (withClosed ? '<td class="n">' + fmtD(l.closedAt) + '</td>' : '') + '</tr>';
+    if (expanded[l.id]) html += '<tr class="hist"><td colspan="' + cols + '">' + historyHtml(l) + '</td></tr>';
   });
-  if (!list.length) html = '<tr><td colspan="7" class="flat" style="text-align:center;padding:24px">Нічого не знайдено</td></tr>';
-  $('rows').innerHTML = html;
-  Array.prototype.forEach.call(document.querySelectorAll('#tbl th'), function (th) {
+  if (!list.length) html = '<tr><td colspan="' + cols + '" class="flat" style="text-align:center;padding:24px">Нічого не знайдено</td></tr>';
+  $(tbody).innerHTML = html;
+  Array.prototype.forEach.call(document.querySelectorAll('#' + table + ' th'), function (th) {
     th.className = th.className.replace(/\s*(asc|desc)/g, '');
-    if (th.dataset.k === sort.k) th.className += ' ' + (sort.dir > 0 ? 'asc' : 'desc');
+    if (th.dataset.k === st.k) th.className += ' ' + (st.dir > 0 ? 'asc' : 'desc');
   });
+}
+
+function renderActive() {
+  var list = sorted(filtered(), sorts.active);
+  $('count').textContent = 'Показано ' + list.length + ' з ' + data.active.length;
+  renderRows('rows', 'tbl', list, sorts.active, false);
 }
 
 function refreshModelOptions() {
@@ -157,12 +167,54 @@ function barChart(rows) {
   return s + '<line class="ax" x1="' + left + '" y1="4" x2="' + left + '" y2="' + (H - 4) + '"/></svg>';
 }
 
+function soldFiltered() {
+  var sid = $('s-search').value, period = Number($('s-period').value) || 0;
+  var since = period ? Date.parse(data.generatedAt) - period * 86400000 : 0;
+  var q = $('s-text').value.trim().toLowerCase();
+  return data.sold.filter(function (l) {
+    if (!inSearch(l, sid)) return false;
+    if (since && Date.parse(l.closedAt) < since) return false;
+    if (q && (l.title + ' ' + (l.city || '') + ' ' + (l.brand || '') + ' ' + (l.model || '')).toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+}
+function renderSoldList() {
+  var list = sorted(soldFiltered(), sorts.sold);
+  $('s-count').textContent = 'Показано ' + list.length + ' з ' + data.sold.length;
+  renderRows('s-rows', 't-sold', list, sorts.sold, true);
+}
+function discounts(list) {
+  return list.map(deltaPct).filter(function (p) { return p != null && p < 0; }).map(function (p) { return -p; });
+}
+function pct(v) { return v == null ? '—' : '−' + v.toFixed(1).replace('.', ',') + '%'; }
+function usdMedian(list) { return median(list.filter(function (x) { return x.priceUsd != null; }).map(function (x) { return x.priceUsd; })); }
+function kyivMonth(iso) {
+  try { return new Date(iso).toLocaleDateString('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit' }); } catch (e) { return iso.slice(0, 7); }
+}
+
 function renderSold() {
-  var sid = $('s-search').value;
-  var sold = data.sold.filter(function (s) { return inSearch(s, sid); });
+  var sold = soldFiltered();
   $('sold-empty').hidden = sold.length > 0;
   $('sold-body').hidden = sold.length === 0;
   if (!sold.length) return;
+  renderSoldList();
+  var disc = discounts(sold);
+  var tiles = [
+    [String(sold.length), 'продано / знято'],
+    [usdMedian(sold) == null ? '—' : '$' + fmtNum(usdMedian(sold)), 'медіана останньої ціни'],
+    [fmtNum(median(sold.map(function (x) { return x.daysOnMarket; }))) + ' дн.', 'медіана днів на ринку'],
+    [disc.length + ' з ' + sold.length, 'знижували ціну'],
+    [pct(median(disc)), 'медіана знижки (серед тих, хто знижував)'],
+  ];
+  $('s-tiles').innerHTML = tiles.map(function (t) { return '<div class="tile"><b>' + esc(t[0]) + '</b><span>' + esc(t[1]) + '</span></div>'; }).join('');
+  var months = {};
+  sold.forEach(function (s) { var m = kyivMonth(s.closedAt); (months[m] = months[m] || []).push(s); });
+  $('t-months').tBodies[0].innerHTML = Object.keys(months).sort().reverse().map(function (m) {
+    var g = months[m], d = discounts(g), p = usdMedian(g);
+    var label = new Date(m + '-15T12:00:00Z').toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
+    return '<tr><td>' + esc(label) + '</td><td class="n">' + g.length + '</td><td class="n">' + (p == null ? '—' : '$' + fmtNum(p)) + '</td><td class="n">' +
+      fmtNum(median(g.map(function (x) { return x.daysOnMarket; }))) + '</td><td class="n">' + d.length + '</td><td class="n">' + pct(median(d)) + '</td></tr>';
+  }).join('');
   var groups = {};
   sold.forEach(function (s) {
     var k = ((s.brand || '') + ' ' + (s.model || '')).trim() || 'Невідомо';
@@ -201,20 +253,29 @@ function init() {
   $('f-brand').onchange = function () { refreshModelOptions(); renderActive(); };
   ['f-model', 'f-yfrom', 'f-yto', 'f-pfrom', 'f-pto'].forEach(function (id) { $(id).oninput = renderActive; });
   $('f-text').oninput = renderActive;
-  $('s-search').onchange = renderSold;
-  $('tbl').tHead.onclick = function (e) {
-    var th = e.target.closest('th'); if (!th) return;
-    var k = th.dataset.k;
-    if (sort.k === k) sort.dir = -sort.dir; else { sort.k = k; sort.dir = (k === 'title' || k === 'city') ? 1 : -1; }
-    renderActive();
-  };
-  $('rows').onclick = function (e) {
-    if (e.target.closest('a')) return;
-    var tr = e.target.closest('tr.row'); if (!tr) return;
-    var id = tr.dataset.id;
-    if (expanded[id]) delete expanded[id]; else expanded[id] = true;
-    renderActive();
-  };
+  $('s-search').onchange = $('s-period').onchange = renderSold;
+  $('s-text').oninput = renderSold;
+  function sortable(table, st, render) {
+    $(table).tHead.onclick = function (e) {
+      var th = e.target.closest('th'); if (!th) return;
+      var k = th.dataset.k;
+      if (st.k === k) st.dir = -st.dir; else { st.k = k; st.dir = (k === 'title' || k === 'city') ? 1 : -1; }
+      render();
+    };
+  }
+  function expandable(tbody, render) {
+    $(tbody).onclick = function (e) {
+      if (e.target.closest('a')) return;
+      var tr = e.target.closest('tr.row'); if (!tr) return;
+      var id = tr.dataset.id;
+      if (expanded[id]) delete expanded[id]; else expanded[id] = true;
+      render();
+    };
+  }
+  sortable('tbl', sorts.active, renderActive);
+  sortable('t-sold', sorts.sold, renderSoldList);
+  expandable('rows', renderActive);
+  expandable('s-rows', renderSoldList);
   Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) {
     t.onclick = function () {
       Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (x) { x.classList.toggle('active', x === t); });

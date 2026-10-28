@@ -14,7 +14,7 @@
 </header>
 <nav class="tabs" role="tablist">
   <button class="tab active" data-tab="active" role="tab">Активні</button>
-  <button class="tab" data-tab="sold" role="tab">Днів до продажу</button>
+  <button class="tab" data-tab="sold" role="tab">Продані</button>
 </nav>
 <main>
   <div id="error" class="empty" hidden></div>
@@ -31,7 +31,7 @@
     </div>
     <p class="count" id="count"></p>
     <div class="scroll">
-      <table id="tbl">
+      <table id="tbl" class="sortable">
         <thead><tr>
           <th data-k="title">Авто</th><th data-k="year" class="n">Рік</th><th data-k="mileageKm" class="n">Пробіг, тис. км</th>
           <th data-k="city">Місто</th><th data-k="priceUsd" class="n">Ціна $</th>
@@ -42,9 +42,29 @@
     </div>
   </section>
   <section id="tab-sold" hidden>
-    <div class="filters"><label>Пошук<select id="s-search"></select></label></div>
+    <div class="filters">
+      <label>Пошук<select id="s-search"></select></label>
+      <label>Період<select id="s-period"><option value="">Увесь час</option><option value="30">30 днів</option><option value="90">90 днів</option><option value="365">Рік</option></select></label>
+      <label class="wide">Текст<input id="s-text" type="search" placeholder="назва, місто…"></label>
+    </div>
     <div id="sold-empty" class="empty" hidden>Поки немає проданих авто. Статистика з’явиться, коли трекер зафіксує перші продажі.</div>
     <div id="sold-body">
+      <div class="tiles" id="s-tiles"></div>
+      <p class="note">Ціна — остання ціна в оголошенні перед тим, як воно зникло (реальна ціна угоди невідома). AutoRia не розрізняє «продано» і «видалено», тож рахуються обидва. Знижка — від першої побаченої ціни.</p>
+      <h2>Продані авто</h2>
+      <p class="count" id="s-count"></p>
+      <div class="scroll">
+        <table id="t-sold" class="sortable">
+          <thead><tr>
+            <th data-k="title">Авто</th><th data-k="year" class="n">Рік</th><th data-k="mileageKm" class="n">Пробіг, тис. км</th>
+            <th data-k="city">Місто</th><th data-k="priceUsd" class="n">Остання ціна $</th>
+            <th data-k="delta" class="n">Знижка</th><th data-k="daysOnMarket" class="n">Днів на ринку</th><th data-k="closedAt" class="n">Зникло</th>
+          </tr></thead>
+          <tbody id="s-rows"></tbody>
+        </table>
+      </div>
+      <h2>По місяцях</h2>
+      <div class="scroll"><table id="t-months"><thead><tr><th>Місяць</th><th class="n">Продано</th><th class="n">Медіана ціни $</th><th class="n">Медіана днів</th><th class="n">Зі знижкою</th><th class="n">Медіана знижки</th></tr></thead><tbody></tbody></table></div>
       <h2>За моделями</h2>
       <div class="scroll"><table id="t-models"><thead><tr><th>Модель</th><th class="n">Продано</th><th class="n">Медіана днів</th><th class="n">Середнє днів</th><th class="n">Медіана ціни $</th></tr></thead><tbody></tbody></table></div>
       <h2>За ціновими діапазонами</h2>

@@ -44,7 +44,12 @@ describe('exportData', () => {
     expect(u.priceHistory[0]).toEqual({ at: '2026-10-20T12:00:00Z', price: 880000, currency: 'UAH', priceUsd: 20000 });
   });
   it('sold listings', () => {
-    expect(d.sold).toEqual([{ id: 12, brand: 'Honda', model: 'Accord', year: 2017, priceUsd: 12000, daysOnMarket: 30, closedAt: '2026-10-15T00:00:00Z', searchIds: [2] }]);
+    expect(d.sold).toEqual([expect.objectContaining({
+      id: 12, url: 'u12', title: 'Accord', brand: 'Honda', model: 'Accord', year: 2017, mileageKm: 120000, city: 'Odesa',
+      priceUsd: 12000, price: 12000, currency: 'USD', firstPrice: 12000, daysOnMarket: 30,
+      closedAt: '2026-10-15T00:00:00Z', searchIds: [2],
+    })]);
+    expect(d.sold[0]!.priceHistory).toHaveLength(1);
   });
   it('empty db gives lastRun null', () => {
     const db = new DatabaseSync(':memory:');

@@ -13,10 +13,8 @@ export interface ActiveListing {
   searchIds: number[]; daysOnMarket: number;
   firstSeenAt: string; priceHistory: PricePoint[];
 }
-export interface SoldListing {
-  id: number; brand: string | null; model: string | null; year: number | null;
-  priceUsd: number | null; daysOnMarket: number; closedAt: string; searchIds: number[];
-}
+/** Left the market (sold or deleted); prices are the last asking price, not the deal price. */
+export interface SoldListing extends ActiveListing { closedAt: string }
 export interface DashboardData {
   generatedAt: string;
   searches: DashboardSearch[];
@@ -52,7 +50,7 @@ export function exportData(db: DatabaseSync, now: string): DashboardData {
     `SELECT l.*, v.first_seen_at AS v_first FROM listings l JOIN vehicles v ON v.id = l.vehicle_id
      WHERE l.status = ? ORDER BY l.id`).all(status) as Row[];
 
-  const active: ActiveListing[] = q('active').map((r) => {
+  const listing = (r: Row, until: string): ActiveListing => {
     const h = history.get(r.id) ?? [];
     return {
       id: r.id, url: r.url, title: r.title, brand: r.brand, model: r.model, year: r.year,
@@ -60,17 +58,15 @@ export function exportData(db: DatabaseSync, now: string): DashboardData {
       price: r.price ?? null, currency: r.currency ?? null,
       firstPrice: h[0]?.price ?? r.price ?? null,
       searchIds: links.get(r.id) ?? [],
-      daysOnMarket: days(r.v_first, now),
+      daysOnMarket: days(r.v_first, until),
       firstSeenAt: r.v_first,
       priceHistory: h,
     };
-  });
-
+  };
+  const active = q('active').map((r) => listing(r, now));
   const sold: SoldListing[] = q('sold').map((r) => ({
-    id: r.id, brand: r.brand, model: r.model, year: r.year, priceUsd: r.price_usd,
-    daysOnMarket: days(r.v_first, r.closed_at ?? now),
+    ...listing(r, r.closed_at ?? now),
     closedAt: r.closed_at ?? r.last_seen_at,
-    searchIds: links.get(r.id) ?? [],
   }));
 
   const run = db.prepare('SELECT started_at, finished_at, ok, requests FROM runs ORDER BY started_at DESC, id DESC LIMIT 1').get() as Row | undefined;
