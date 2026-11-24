@@ -27,10 +27,12 @@ export interface HttpClientOptions {
   sleep?: SleepFn;
   /** Random source in [0,1); injectable for tests. */
   random?: () => number;
-  /** Retries after the first attempt (network errors and 5xx). Default 3. */
+  /** Retries after the first attempt (network errors, timeouts and 5xx). Default 5. */
   maxRetries?: number;
-  /** Base for exponential backoff in ms. Default 1000. */
+  /** Base for exponential backoff in ms. Default 5000: 5+10+20+40+80 s rides out a short network outage. */
   backoffMs?: number;
+  /** Per-request timeout in ms. Default 30000. */
+  timeoutMs?: number;
 }
 
 export interface GetOptions {
@@ -63,13 +65,22 @@ function looksLikeChallenge(body: string): boolean {
   );
 }
 
+/** "fetch failed" alone says nothing; undici puts the real reason (ECONNRESET, ETIMEDOUT…) in `cause`. */
+function describe(e: unknown): string {
+  if (!(e instanceof Error)) return String(e);
+  const cause = e.cause as { code?: string; message?: string } | undefined;
+  const detail = cause?.code ?? cause?.message;
+  return detail && !e.message.includes(detail) ? `${e.message} (${detail})` : e.message;
+}
+
 export function createHttpClient(opts: HttpClientOptions = {}): HttpClient {
   const fetchImpl: FetchLike = opts.fetchImpl ?? ((u, i) => fetch(u, i));
   const sleep = opts.sleep ?? defaultSleep;
   const random = opts.random ?? Math.random;
   const [minDelay, maxDelay] = opts.delayMs ?? [1000, 3000];
-  const maxRetries = opts.maxRetries ?? 3;
-  const backoffMs = opts.backoffMs ?? 1000;
+  const maxRetries = opts.maxRetries ?? 5;
+  const backoffMs = opts.backoffMs ?? 5000;
+  const timeoutMs = opts.timeoutMs ?? 30_000;
   let count = 0;
   let first = true;
 
@@ -91,7 +102,11 @@ export function createHttpClient(opts: HttpClientOptions = {}): HttpClient {
       let res: Response;
       let body: string;
       try {
-        res = await fetchImpl(url, { headers: HEADERS, redirect: o.redirect ?? 'follow' });
+        res = await fetchImpl(url, {
+          headers: HEADERS,
+          redirect: o.redirect ?? 'follow',
+          signal: AbortSignal.timeout(timeoutMs),
+        });
         body = await res.text();
       } catch (e) {
         lastError = e;
@@ -113,7 +128,7 @@ export function createHttpClient(opts: HttpClientOptions = {}): HttpClient {
       }
       return { status: res.status, headers: res.headers, body };
     }
-    const msg = lastError instanceof Error ? lastError.message : String(lastError);
+    const msg = describe(lastError);
     throw new Error(`Request failed after ${maxRetries + 1} attempts: ${url}: ${msg}`);
   }
 

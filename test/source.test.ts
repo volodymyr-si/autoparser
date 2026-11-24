@@ -157,15 +157,26 @@ describe('http client', () => {
     const r = await c.get('https://x/');
     expect(r.body).toBe('ok');
     expect(c.requestCount).toBe(3);
-    expect(sleeps).toEqual([1000, 2000]);
+    expect(sleeps).toEqual([5000, 10000]);
   });
 
-  it('retries on network errors and gives up after 4 attempts', async () => {
+  it('retries network errors for ~2.5 min, then reports the underlying cause', async () => {
+    const sleeps: number[] = [];
     const c = createHttpClient({
-      delayMs: [0, 0], sleep: async () => {}, fetchImpl: async () => { throw new Error('ECONNRESET'); },
+      delayMs: [0, 0],
+      sleep: async (ms) => void sleeps.push(ms),
+      fetchImpl: async () => { throw new TypeError('fetch failed', { cause: { code: 'ECONNRESET' } }); },
     });
-    await expect(c.get('https://x/')).rejects.toThrow(/ECONNRESET/);
-    expect(c.requestCount).toBe(4);
+    await expect(c.get('https://x/')).rejects.toThrow('Request failed after 6 attempts: https://x/: fetch failed (ECONNRESET)');
+    expect(c.requestCount).toBe(6);
+    expect(sleeps).toEqual([5000, 10000, 20000, 40000, 80000]);
+  });
+
+  it('passes a timeout signal to every request', async () => {
+    let signal: AbortSignal | null | undefined;
+    const c = createHttpClient({ delayMs: [0, 0], fetchImpl: async (_u, i) => { signal = i?.signal; return res(200, 'ok'); } });
+    await c.get('https://x/');
+    expect(signal).toBeInstanceOf(AbortSignal);
   });
 
   it('does not retry 404', async () => {

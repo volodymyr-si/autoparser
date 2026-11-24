@@ -40,7 +40,7 @@ async function track(): Promise<boolean> {
     console.log(`run #${report.runId}: ok=${report.ok} requests=${report.requests}`);
     for (const e of report.errors) console.log(`::warning::${e}`);
     for (const s of report.searches.filter((s) => !s.ok)) console.log(`::warning::${s.search}: ${s.error}`);
-    return report.ok;
+    return report.searches.length === 0 || report.searches.some((search) => search.ok);
   } finally {
     db.close();
   }
@@ -49,8 +49,8 @@ async function track(): Promise<boolean> {
 async function main(): Promise<void> {
   if (process.argv.includes('--probe')) return probe();
   try {
-    // Partial failures are reported in the digest; only a crash fails the job.
-    await track();
+    // Partial failures are reported in the digest. Fail the job if every enabled search failed.
+    if (!(await track())) process.exitCode = 1;
   } catch (err) {
     console.error(err);
     await sendTelegram([formatFailure(err, actionsRunUrl())]).catch((e) => console.error('telegram failed:', e));
